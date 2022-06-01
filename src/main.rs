@@ -16,24 +16,9 @@ struct VerletObject {
 
 impl VerletObject {
     pub fn draw(&self, canvas: &sdl2::render::Canvas<sdl2::video::Window>) {
-        let pos_x = i16::try_from(self.position_current[0].round() as i32);
-        let pos_y = i16::try_from(self.position_current[1].round() as i32);
-
-        let pos_x = match pos_x {
-            Ok(pos_x) => pos_x,
-            Err(e) => panic!("{}", e),
-        };
-
-        let pos_y = match pos_y {
-            Ok(pos_y) => pos_y,
-            Err(e) => panic!("{}", e),
-        };
-
-        let res: Result<(), String> = canvas.filled_circle(pos_x, pos_y, self.radius, self.color);
-        match res {
-            Ok(()) => {},
-            Err(e) => panic!("{}", e),
-        }
+        let pos_x = i16::try_from(self.position_current[0].round() as i32).unwrap();
+        let pos_y = i16::try_from(self.position_current[1].round() as i32).unwrap();
+        canvas.filled_circle(pos_x, pos_y, self.radius, self.color).unwrap();
     }
 
     fn update_position(&mut self, dt: f32) {
@@ -59,16 +44,13 @@ impl Solver {
     }
 
     fn update(&mut self, dt: f32) {
-        let sub_steps: u32 = 8;
-        let sub_dt: f32 = dt / sub_steps as f32;
-        let mut i = 0;
-        while i <= sub_steps {
+        const SUB_STEPS: u32 = 8;
+        let sub_dt: f32 = dt / SUB_STEPS as f32;
+        for _ in 0..SUB_STEPS {
             self.apply_gravity();
             self.apply_constraint();
             self.solve_collisions();
             self.update_positions(sub_dt);
-
-            i += 1;
         }
     }
 
@@ -161,7 +143,7 @@ fn main() {
                 },
                 Event::MouseButtonDown { mouse_btn: sdl2::mouse::MouseButton::Left, x, y, .. } => {
                     let mut rng = rand::thread_rng();
-                    solver.add_object(x as f32, y as f32, rng.gen_range(5..50), Color::RGB(rng.gen_range(0..255), rng.gen_range(0..255), rng.gen_range(0..255)));
+                    solver.add_object(x as f32, y as f32, rng.gen_range(5..50), Color::RGB(rng.gen_range(0..=255), rng.gen_range(0..=255), rng.gen_range(0..=255)));
                 },
                 _ => {}
             }
