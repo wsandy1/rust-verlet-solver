@@ -54,6 +54,7 @@ impl Solver {
     fn update(&mut self, dt: f32) {
         self.apply_gravity();
         self.apply_constraint();
+        self.solve_collisions();
         self.update_positions(dt);
 
     }
@@ -83,6 +84,28 @@ impl Solver {
             }
         }
     }
+
+    fn solve_collisions(&mut self) {
+        let object_count: &usize = &self.objects.len();
+        let mut i = 0;
+        while i < *object_count {
+            let mut k = &i + 1;
+            while k < *object_count {
+                let collision_axis: Vector2<f32> = self.objects[i].position_current - self.objects[k].position_current;
+                let dist: f32 = (collision_axis[0].powf(2f32) + collision_axis[1].powf(2f32)).sqrt();
+                if dist < 40f32 {
+                    let n: Vector2<f32> = collision_axis / dist;
+                    let delta: f32 = 40f32 - dist;
+                    self.objects[i].position_current += 0.96f32 * delta * n;
+                    self.objects[k].position_current -= 0.96f32 * delta * n;
+                }
+            
+                k += 1;
+            }
+
+            i += 1;
+        }
+    }
 }
 
 fn main() {
@@ -101,7 +124,7 @@ fn main() {
     canvas.present();
     let mut event_pump = sdl_context.event_pump().unwrap();
 
-    let objects: Vec<VerletObject> = vec![VerletObject { position_current: Vector2::new(700f32, 400f32), position_old: Vector2::new(700f32, 400f32), acceleration: Vector2::new(0f32, 0f32) }];
+    let objects: Vec<VerletObject> = vec![VerletObject { position_current: Vector2::new(700f32, 400f32), position_old: Vector2::new(700f32, 400f32), acceleration: Vector2::new(0f32, 0f32) }, VerletObject { position_current: Vector2::new(400f32, 500f32), position_old: Vector2::new(400f32, 500f32), acceleration: Vector2::new(0f32, 0f32) }];
     let mut solver: Solver = Solver { gravity: Vector2::new(0f32, 1000f32), objects: objects};
 
 
