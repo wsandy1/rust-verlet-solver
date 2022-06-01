@@ -4,11 +4,14 @@ use sdl2::keyboard::Keycode;
 use std::time::Duration;
 use sdl2::gfx::primitives::DrawRenderer;
 use cgmath::Vector2;
+use rand::Rng;
 
 struct VerletObject {
     position_current: Vector2<f32>,
     position_old: Vector2<f32>,
     acceleration: Vector2<f32>,
+    radius: i16,
+    color: Color,
 }
 
 impl VerletObject {
@@ -26,7 +29,7 @@ impl VerletObject {
             Err(e) => panic!("{}", e),
         };
 
-        let res: Result<(), String> = canvas.filled_circle(pos_x, pos_y, 20, Color::RGB(255, 255, 255));
+        let res: Result<(), String> = canvas.filled_circle(pos_x, pos_y, self.radius, self.color);
         match res {
             Ok(()) => {},
             Err(e) => panic!("{}", e),
@@ -51,12 +54,22 @@ struct Solver {
 }
 
 impl Solver {
-    fn update(&mut self, dt: f32) {
-        self.apply_gravity();
-        self.apply_constraint();
-        self.solve_collisions();
-        self.update_positions(dt);
+    fn add_object(&mut self, x: f32, y: f32, radius: i16, color: Color) {
+        self.objects.push(VerletObject { position_current: Vector2::new(x, y), position_old: Vector2::new(x, y), acceleration: Vector2::new(0f32, 0f32), radius: radius, color: color });
+    }
 
+    fn update(&mut self, dt: f32) {
+        let sub_steps: u32 = 8;
+        let sub_dt: f32 = dt / sub_steps as f32;
+        let mut i = 0;
+        while i <= sub_steps {
+            self.apply_gravity();
+            self.apply_constraint();
+            self.solve_collisions();
+            self.update_positions(sub_dt);
+
+            i += 1;
+        }
     }
 
     fn update_positions(&mut self, dt: f32) {
@@ -78,9 +91,9 @@ impl Solver {
             let to_obj: Vector2<f32> = obj.position_current - position;
             let dist: f32 = (to_obj[0].powf(2f32) + to_obj[1].powf(2f32)).sqrt();
 
-            if dist > radius - 20f32 {
+            if dist > radius - obj.radius as f32 {
                 let n: Vector2<f32> = to_obj / dist;
-                obj.position_current = position + n * (radius - 20f32);
+                obj.position_current = position + n * (radius - obj.radius as f32);
             }
         }
     }
@@ -93,11 +106,12 @@ impl Solver {
             while k < *object_count {
                 let collision_axis: Vector2<f32> = self.objects[i].position_current - self.objects[k].position_current;
                 let dist: f32 = (collision_axis[0].powf(2f32) + collision_axis[1].powf(2f32)).sqrt();
-                if dist < 40f32 {
+                let min_dist: i16 = self.objects[i].radius + self.objects[k].radius;
+                if dist < min_dist as f32 {
                     let n: Vector2<f32> = collision_axis / dist;
-                    let delta: f32 = 40f32 - dist;
-                    self.objects[i].position_current += 0.96f32 * delta * n;
-                    self.objects[k].position_current -= 0.96f32 * delta * n;
+                    let delta: f32 = min_dist as f32 - dist;
+                    self.objects[i].position_current += 0.5f32 * delta * n;
+                    self.objects[k].position_current -= 0.5f32 * delta * n;
                 }
             
                 k += 1;
@@ -124,9 +138,7 @@ fn main() {
     canvas.present();
     let mut event_pump = sdl_context.event_pump().unwrap();
 
-    let objects: Vec<VerletObject> = vec![VerletObject { position_current: Vector2::new(700f32, 400f32), position_old: Vector2::new(700f32, 400f32), acceleration: Vector2::new(0f32, 0f32) }, VerletObject { position_current: Vector2::new(400f32, 500f32), position_old: Vector2::new(400f32, 500f32), acceleration: Vector2::new(0f32, 0f32) }];
-    let mut solver: Solver = Solver { gravity: Vector2::new(0f32, 1000f32), objects: objects};
-
+    let mut solver: Solver = Solver { gravity: Vector2::new(0f32, 1000f32), objects: vec![]};
 
     'running: loop {
         canvas.set_draw_color(Color::RGB(0, 0, 0));
@@ -146,6 +158,10 @@ fn main() {
                 Event::Quit {..} |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     break 'running
+                },
+                Event::MouseButtonDown { mouse_btn: sdl2::mouse::MouseButton::Left, x, y, .. } => {
+                    let mut rng = rand::thread_rng();
+                    solver.add_object(x as f32, y as f32, rng.gen_range(5..50), Color::RGB(rng.gen_range(0..255), rng.gen_range(0..255), rng.gen_range(0..255)));
                 },
                 _ => {}
             }
