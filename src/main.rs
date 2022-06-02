@@ -44,7 +44,7 @@ impl Solver {
     }
 
     fn update(&mut self, dt: f32) {
-        const SUB_STEPS: u32 = 8;
+        const SUB_STEPS: u32 = 16;
         let sub_dt: f32 = dt / SUB_STEPS as f32;
         for _ in 0..SUB_STEPS {
             self.apply_gravity();
@@ -82,10 +82,8 @@ impl Solver {
 
     fn solve_collisions(&mut self) {
         let object_count: &usize = &self.objects.len();
-        let mut i = 0;
-        while i < *object_count {
-            let mut k = &i + 1;
-            while k < *object_count {
+        for i in 0..*object_count {
+            for k in (&i+1)..*object_count {
                 let collision_axis: Vector2<f32> = self.objects[i].position_current - self.objects[k].position_current;
                 let dist: f32 = (collision_axis[0].powf(2f32) + collision_axis[1].powf(2f32)).sqrt();
                 let min_dist: i16 = self.objects[i].radius + self.objects[k].radius;
@@ -95,11 +93,7 @@ impl Solver {
                     self.objects[i].position_current += 0.5f32 * delta * n;
                     self.objects[k].position_current -= 0.5f32 * delta * n;
                 }
-            
-                k += 1;
             }
-
-            i += 1;
         }
     }
 }
@@ -127,7 +121,7 @@ fn main() {
         canvas.clear();
         
         canvas.set_draw_color(Color::RGB(255, 255, 255));
-        let _constr = canvas.filled_circle(600, 400, 300, Color::RGB(150, 150, 150));
+        canvas.filled_circle(600, 400, 300, Color::RGB(150, 150, 150)).unwrap();
 
         for object in solver.objects.iter() {
             object.draw(&canvas);
